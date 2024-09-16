@@ -16,6 +16,7 @@ import logging
 import os
 from pathlib import Path
 import sys
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,9 @@ def hourly_usage_entries_from_rmp_csv_file(
     return hourly_entries
 
 
-def hourly_usage_entries_from_alternative_csv_file(csv_file: Path) -> list[datetime, float]:
+def hourly_usage_entries_from_alternative_csv_file(
+    csv_file: Path,
+) -> list[datetime, float]:
     """Given a Johnny CSV file, get the list of hourly usages from that file
 
     Alternative CSV format is as follows:
@@ -214,7 +217,34 @@ def calculate_block_cost(
     return block_cost
 
 
-def calculate_ev_cost(date_object: datetime, usage: float) -> float:
+def is_peak_hour(date_object: datetime) -> bool:
+    """Given a day/hour, determine if it's considered peak or not for time of usage billing
+
+    Args:
+        date_object: object representing the day/hour in question
+
+    Returns:
+        bool: True if peak hour, else false
+    """
+    usage_year = date_object.year
+    usage_month = date_object.month
+    usage_day = date_object.day
+    usage_hour = date_object.hour
+
+    summer_months = [5, 6, 7, 8, 9]
+    peak_hours = [8, 9, 15, 16, 17, 18, 19]
+    if usage_month in summer_months:
+        peak_hours = [15, 16, 17, 18, 19]
+
+    day_str = f"{usage_year}-{str(usage_month).zfill(2)}-{str(usage_day).zfill(2)}"
+    is_weekday = date_object.weekday() in range(0, 5)
+    is_holiday = day_str in HOLIDAYS
+    peak_day = is_weekday and not is_holiday
+    is_peak = peak_day and usage_hour in peak_hours
+    return is_peak
+
+
+def calculate_ev_cost(date_object: datetime, usage: float) -> tuple[float, bool]:
     """Calculate the day's EV cost
 
     MONTHLY BILL: (continued)
@@ -249,30 +279,17 @@ def calculate_ev_cost(date_object: datetime, usage: float) -> float:
         usage: usage
 
     Returns:
-        float: usage cost in USD
+        Tuple containing:
+            float: usage cost in USD
+            bool: True if peak hour, else false
     """
-    month_index = date_object.month
-    summer_months = [5, 6, 7, 8, 9]
-    # hours are zero based, and captured at end of measurement hour
-    # so
-    # Hour of 12 means it's for the usage between 12noon and 1pm
-    # Hour of 23 means it's for the usage between 11pm and Midnight
-    # Hour of 0 means it's for the usage between Midnight and 1am
-    peak_hours = [8, 9, 15, 16, 17, 18, 19]
-    if month_index in summer_months:
-        peak_hours = [15, 16, 17, 18, 19]
-
-    usage_hour = date_object.hour
-    day_str = f"{date_object.year}-{str(date_object.month).zfill(2)}-{str(date_object.day).zfill(2)}"
-    is_weekday = date_object.weekday() in range(0, 5)
-    is_holiday = day_str in HOLIDAYS
-    peak_day = is_weekday and not is_holiday
+    peak_hour = is_peak_hour(date_object=date_object)
     hour_rate = 0.052004
-    if peak_day and usage_hour in peak_hours:
+    if peak_hour:
         hour_rate = 0.253532
 
     cost = usage * hour_rate
-    return cost
+    return cost, peak_hour
 
 
 def many_month_usage_summary_from_hourly_entries(
@@ -290,32 +307,44 @@ def many_month_usage_summary_from_hourly_entries(
     for date_object, hour_usage in hourly_entries:
         month_key = f"{date_object.year}-{str(date_object.month).zfill(2)}"
         if month_key not in month_sums:
-            month_sums[month_key] = {"kWh": 0, "block_cost": 0, "ev_cost": 0}
+            month_sums[month_key] = {
+                "kWh": 0,
+                "block_cost": 0,
+                "ev_cost": 0,
+                "sum_peak_kWh": 0,
+            }
 
         block_cost = calculate_block_cost(
             date_object=date_object,
             usage=hour_usage,
             usage_sum=month_sums[month_key]["kWh"],
         )
-        ev_cost = calculate_ev_cost(date_object=date_object, usage=hour_usage)
+        ev_cost, peak_hour = calculate_ev_cost(
+            date_object=date_object, usage=hour_usage
+        )
         month_sums[month_key]["kWh"] += hour_usage
         month_sums[month_key]["block_cost"] += block_cost
         month_sums[month_key]["ev_cost"] += ev_cost
+        if peak_hour:
+            month_sums[month_key]["sum_peak_kWh"] += hour_usage
 
     overall_block_cost = 0
     overall_ev_cost = 0
     overall_kwh = 0
+    overall_sum_peak_kwh = 0
     for _month, m_dict in month_sums.items():
         m_dict["difference"] = m_dict["block_cost"] - m_dict["ev_cost"]
         overall_block_cost += m_dict["block_cost"]
         overall_ev_cost += m_dict["ev_cost"]
         overall_kwh += m_dict["kWh"]
+        overall_sum_peak_kwh += m_dict["sum_peak_kWh"]
 
     month_sums["SUMMARY"] = {
         "kWh": overall_kwh,
         "block_cost": overall_block_cost,
         "ev_cost": overall_ev_cost,
-        "difference": overall_block_cost - overall_ev_cost
+        "difference": overall_block_cost - overall_ev_cost,
+        "sum_peak_kWh": overall_sum_peak_kwh,
     }
 
     return month_sums
@@ -393,9 +422,27 @@ def get_hourly_usage_entries_from_alternative_csvs(
     """
     hourly_usage_entries = []
     for csv_file in csv_files:
-        hourly_entries = hourly_usage_entries_from_alternative_csv_file(csv_file=csv_file)
+        hourly_entries = hourly_usage_entries_from_alternative_csv_file(
+            csv_file=csv_file
+        )
         hourly_usage_entries += hourly_entries
     return hourly_usage_entries
+
+
+def sort_dict_recursively(d: Any) -> Any:
+    """Recursively sort a dictionary by its keys."""
+    if isinstance(d, dict):
+        return {k: sort_dict_recursively(v) for k, v in sorted(d.items())}
+    elif isinstance(d, list):
+        return [sort_dict_recursively(i) for i in d]
+    else:
+        return d
+
+
+def pretty_str_dict(d: dict[str, Any]) -> str:
+    """Return a string of a dictionary with keys sorted recursively."""
+    sorted_dict = sort_dict_recursively(d)
+    return json.dumps(sorted_dict, indent=4, sort_keys=True)
 
 
 def main() -> int:
@@ -417,7 +464,7 @@ def main() -> int:
     stats = many_month_usage_summary_from_hourly_entries(
         hourly_entries=hourly_usage_entries
     )
-    logger.info(json.dumps(stats, indent=4))
+    logger.info(pretty_str_dict(stats))
 
 
 if __name__ == "__main__":
