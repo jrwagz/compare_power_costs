@@ -183,11 +183,16 @@ def calculate_block_cost(
     MONTHLY BILL:
     Energy Charge:
         Billing Months - June through September inclusive (4 months)
-            9.0279¢ per kWh first 400 kWh
-            11.7210¢ per kWh all additional kWh
+            9.0279¢ per kWh first 400 kWh (12.34294488 after fees/taxes)
+            11.7210¢ per kWh all additional kWh (16.0249512 after fees/taxes)
         Billing Months - October through May inclusive (8 months)
-            7.9893¢ per kWh first 400 kWh
-            10.3725¢ per kWh all additional kWh
+            7.9893¢ per kWh first 400 kWh (10.92297096 after fees/taxes)
+            10.3725¢ per kWh all additional kWh (14.181282 after fees/taxes)
+
+    Prices get adjusted as follows:
+        - add 23.84% fees to base price
+        - after fees are added, add another 10.4% for taxes
+        - effective total increase is 36.72%
 
     Args:
         date_object: object representing the day/hour in question
@@ -199,11 +204,11 @@ def calculate_block_cost(
     """
     month_index = date_object.month
     summer_months = [6, 7, 8, 9]
-    low_rate = 0.0798930
-    high_rate = 0.1037250
+    low_rate = 0.1092297096
+    high_rate = 0.14181282
     if month_index in summer_months:
-        low_rate = 0.0902790
-        high_rate = 0.1172100
+        low_rate = 0.1234294488
+        high_rate = 0.160249512
 
     if usage_sum + usage <= 400:  # Still in the first 400 kWh block
         block_cost = usage * low_rate
@@ -250,8 +255,14 @@ def calculate_ev_cost(date_object: datetime, usage: float) -> tuple[float, bool]
     MONTHLY BILL: (continued)
     Energy Charge:
     Rate Option 1:
-        25.3532¢ per kWh for all On-Peak kWh
-        5.2004¢ per kWh for all Off-Peak kWh
+        25.3532¢ per kWh for all On-Peak kWh (34.66289504 after fees/taxes)
+        5.2004¢ per kWh for all Off-Peak kWh (7.10998688 after fees/taxes)
+
+    Prices get adjusted as follows:
+        - add 23.84% fees to base price
+        - after fees are added, add another 10.4% for taxes
+        - effective total increase is 36.72%
+
     TIME PERIODS:
         On-Peak:
             October through April inclusive (7 months)
@@ -284,9 +295,9 @@ def calculate_ev_cost(date_object: datetime, usage: float) -> tuple[float, bool]
             bool: True if peak hour, else false
     """
     peak_hour = is_peak_hour(date_object=date_object)
-    hour_rate = 0.052004
+    hour_rate = 0.0710998688
     if peak_hour:
-        hour_rate = 0.253532
+        hour_rate = 0.3466289504
 
     cost = usage * hour_rate
     return cost, peak_hour
