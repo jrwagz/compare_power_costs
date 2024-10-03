@@ -1,0 +1,52 @@
+- sensor:
+    - name: "Rocky Mountain Power EV TOU Tier"
+      unique_id: "rocky_mountain_power_ev_tou_tier"
+      state: >
+        {% set today = today_at() %}
+        {# 
+          RMP Holidays: New Year's Day, President's Day, Memorial Day, Independence Day,
+          Pioneer Day, Labor Day, Thanksgiving Day, Christmas
+
+          We are using the holiday integration to get proper changing of holidays when
+          they fall on a weekend. See https://www.home-assistant.io/integrations/holiday/
+
+          When a holiday falls on a Saturday or Sunday, the Friday before the holiday (if the
+          holiday falls on a Saturday) or the Monday following the holiday (if the holiday falls on
+          a Sunday) will be considered a holiday and consequently Off-Peak.
+
+        #}
+        {% set isHoliday = 
+          is_state('calendar.united_states_ut', 'on') and
+          state_attr('calendar.united_states_ut', 'message') in 
+          [
+            "New Year's Day",
+            "Presidents' Day",
+            "Memorial Day",
+            "Independence Day",
+            "Pioneer Day",
+            "Labor Day",
+            "Thanksgiving",
+            "Christmas Day",
+          ]
+        %}
+        {% set isWeekend = today.weekday() > 4 %}
+        {% if isHoliday or isWeekend %}
+          {# Holidays and Weekends #}
+          {% set tier = 'holiday_weekend' %}
+        {% elif today.month >= 10 or today.month <= 4 %}
+          {# October to April (Winter) #}
+          {% set tier = 'winter_weekday' %}
+        {% else %}
+          {# May to September (Summer) #}
+          {% set tier = 'summer_weekday' %}
+        {% endif %}
+        {# Winter peak hours: 8am-10am, 3pm-8pm; Summer peak: 3pm-8pm #}
+        {{
+          {'P':'peak', 'O':'offpeak'}
+            [
+              {'summer_weekday': 'OOOOOOOOOOOOOOOPPPPPOOOO',
+               'winter_weekday': 'OOOOOOOOPPOOOOOPPPPPOOOO',
+               'holiday_weekend': 'OOOOOOOOOOOOOOOOOOOOOOOO'}
+              [tier][now().hour]
+            ]
+        }}
