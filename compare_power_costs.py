@@ -344,18 +344,24 @@ def many_month_usage_summary_from_hourly_entries(
     overall_kwh = 0
     overall_sum_peak_kwh = 0
     for _month, m_dict in month_sums.items():
-        m_dict["difference"] = m_dict["block_cost"] - m_dict["ev_cost"]
+        m_dict["difference"] = round(m_dict["block_cost"] - m_dict["ev_cost"],3)
+        m_dict["off_peak_%"] = round(100*((m_dict["kWh"] - m_dict["sum_peak_kWh"]))/m_dict["kWh"],3)
         overall_block_cost += m_dict["block_cost"]
         overall_ev_cost += m_dict["ev_cost"]
         overall_kwh += m_dict["kWh"]
         overall_sum_peak_kwh += m_dict["sum_peak_kWh"]
+        m_dict["kWh"] = round(m_dict["kWh"],3)
+        m_dict["block_cost"] = round(m_dict["block_cost"],3)
+        m_dict["ev_cost"] = round(m_dict["ev_cost"],3)
+        m_dict["sum_peak_kWh"] = round(m_dict["sum_peak_kWh"],3)
 
     month_sums["SUMMARY"] = {
-        "kWh": overall_kwh,
-        "block_cost": overall_block_cost,
-        "ev_cost": overall_ev_cost,
-        "difference": overall_block_cost - overall_ev_cost,
-        "sum_peak_kWh": overall_sum_peak_kwh,
+        "kWh": round(overall_kwh,3),
+        "block_cost": round(overall_block_cost,3),
+        "ev_cost": round(overall_ev_cost,3),
+        "difference": round(overall_block_cost - overall_ev_cost,3),
+        "sum_peak_kWh": round(overall_sum_peak_kwh,3),
+        "off_peak_%": round(100*(overall_kwh-overall_sum_peak_kwh)/overall_kwh,3)
     }
 
     return month_sums
