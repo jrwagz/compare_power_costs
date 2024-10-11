@@ -252,6 +252,9 @@ def is_peak_hour(date_object: datetime) -> bool:
 def calculate_ev_cost(date_object: datetime, usage: float) -> tuple[float, bool]:
     """Calculate the day's EV cost
 
+    Definition taken from:
+    https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/002E_Residential_Service_Electric_Vehicle_Time_of_Use_Pilot.pdf
+
     MONTHLY BILL: (continued)
     Energy Charge:
     Rate Option 1:
