@@ -18,26 +18,38 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from holidays.countries import US
+
 logger = logging.getLogger(__name__)
 
-HOLIDAYS = (
-    "2023-01-02",  # New Year's Day
-    "2023-02-20",  # President's Day
-    "2023-05-29",  # Memorial Day
-    "2023-07-04",  # Independence Day
-    "2023-07-24",  # Pioneer Day
-    "2023-09-04",  # Labor Day
-    "2023-11-23",  # Thanksgiving Day
-    "2023-12-25",  # Christmas Day
-    "2024-01-01",  # New Year's Day
-    "2024-02-19",  # President's Day
-    "2024-05-27",  # Memorial Day
-    "2024-07-04",  # Independence Day
-    "2024-07-24",  # Pioneer Day
-    "2024-09-02",  # Labor Day
-    "2024-11-28",  # Thanksgiving Day
-    "2024-12-25",  # Christmas Day
-)
+
+class RockyMountainPowerHolidays(US):
+    """Custom Holiday Class for Rocky Mountain Power Holidays
+
+    This is setup to return the following holidays:
+
+    - New Year's Day
+    - President's Day
+    - Memorial Day
+    - Independence Day
+    - Pioneer Day
+    - Labor Day
+    - Thanksgiving Day
+    - Christmas Day
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.subdiv = "UT"
+
+    def _populate(self, year):
+        # Populate the holiday list with the default US/UT holidays.
+        super()._populate(year)
+        # Now remove the holidays that we don't want
+        self.pop_named("Martin Luther King Jr. Day")
+        self.pop_named("Juneteenth National Independence Day")
+        self.pop_named("Columbus Day")
+        self.pop_named("Veterans Day")
 
 
 def parse_args() -> argparse.Namespace:
@@ -222,18 +234,19 @@ def calculate_block_cost(
     return block_cost
 
 
-def is_peak_hour(date_object: datetime) -> bool:
+def is_peak_hour(
+    date_object: datetime, rmp_holidays: RockyMountainPowerHolidays
+) -> bool:
     """Given a day/hour, determine if it's considered peak or not for time of usage billing
 
     Args:
         date_object: object representing the day/hour in question
+        rmp_holidays: Holiday object defining the RMP holidays
 
     Returns:
         bool: True if peak hour, else false
     """
-    usage_year = date_object.year
     usage_month = date_object.month
-    usage_day = date_object.day
     usage_hour = date_object.hour
 
     summer_months = [5, 6, 7, 8, 9]
@@ -241,15 +254,16 @@ def is_peak_hour(date_object: datetime) -> bool:
     if usage_month in summer_months:
         peak_hours = [15, 16, 17, 18, 19]
 
-    day_str = f"{usage_year}-{str(usage_month).zfill(2)}-{str(usage_day).zfill(2)}"
     is_weekday = date_object.weekday() in range(0, 5)
-    is_holiday = day_str in HOLIDAYS
+    is_holiday = date_object in rmp_holidays
     peak_day = is_weekday and not is_holiday
     is_peak = peak_day and usage_hour in peak_hours
     return is_peak
 
 
-def calculate_ev_cost(date_object: datetime, usage: float) -> tuple[float, bool]:
+def calculate_ev_cost(
+    date_object: datetime, usage: float, rmp_holidays: RockyMountainPowerHolidays
+) -> tuple[float, bool]:
     """Calculate the day's EV cost
 
     Definition taken from:
@@ -291,13 +305,14 @@ def calculate_ev_cost(date_object: datetime, usage: float) -> tuple[float, bool]
     Args:
         date_object: object representing the day/hour in question
         usage: usage
+        rmp_holidays: Holiday object defining the RMP holidays
 
     Returns:
         Tuple containing:
             float: usage cost in USD
             bool: True if peak hour, else false
     """
-    peak_hour = is_peak_hour(date_object=date_object)
+    peak_hour = is_peak_hour(date_object=date_object, rmp_holidays=rmp_holidays)
     hour_rate = 0.0710998688
     if peak_hour:
         hour_rate = 0.3466289504
@@ -307,12 +322,14 @@ def calculate_ev_cost(date_object: datetime, usage: float) -> tuple[float, bool]
 
 
 def many_month_usage_summary_from_hourly_entries(
-    hourly_entries: list[tuple[datetime, float]]
+    hourly_entries: list[tuple[datetime, float]],
+    rmp_holidays: RockyMountainPowerHolidays,
 ) -> dict[int, dict]:
     """Summarize many months of usage data
 
     Args:
         date_path_tuples: list of tuples of datetime and float objects, one row for each hour
+        rmp_holidays: Holiday object defining the RMP holidays
 
     Returns:
         dict[int, dict]: each month's usage and cost summary
@@ -334,7 +351,7 @@ def many_month_usage_summary_from_hourly_entries(
             usage_sum=month_sums[month_key]["kWh"],
         )
         ev_cost, peak_hour = calculate_ev_cost(
-            date_object=date_object, usage=hour_usage
+            date_object=date_object, usage=hour_usage, rmp_holidays=rmp_holidays
         )
         month_sums[month_key]["kWh"] += hour_usage
         month_sums[month_key]["block_cost"] += block_cost
@@ -477,6 +494,7 @@ def main() -> int:
     """
     opts = parse_args()
     all_csv_files = find_csv_files(root_dir=opts.directory)
+    rmp_holidays = RockyMountainPowerHolidays()
     if opts.alternative_format:
         hourly_usage_entries = get_hourly_usage_entries_from_alternative_csvs(
             csv_files=all_csv_files
@@ -486,7 +504,7 @@ def main() -> int:
             csv_files=all_csv_files
         )
     stats = many_month_usage_summary_from_hourly_entries(
-        hourly_entries=hourly_usage_entries
+        hourly_entries=hourly_usage_entries, rmp_holidays=rmp_holidays
     )
     logger.info(pretty_str_dict(stats))
 
