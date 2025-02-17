@@ -20,7 +20,7 @@
           state_attr('calendar.united_states_ut', 'message') in 
           [
             "New Year's Day",
-            "Presidents' Day",
+            "Washington's Birthday",
             "Memorial Day",
             "Independence Day",
             "Pioneer Day",
