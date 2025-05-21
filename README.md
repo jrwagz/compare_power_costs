@@ -1,5 +1,9 @@
 # Rocky Mountain Power Electric Vehicle Pricing Plan Comparison Tool
 
+> UPDATE: As of 2025-Apr-25 Rocky Mountain Power is no longer accepting new entrants into this program.  Their website
+> states to check [their website](https://www.rockymountainpower.net/savings-energy-choices/electric-vehicles.html)
+> after 2025-Dec-01 for updates.
+
 This tool is intended as a way to compare Rocky Mountain Power pricing, most likely for those
 considering participating in the
 [program](https://www.rockymountainpower.net/savings-energy-choices/electric-vehicles/utah-ev-time-of-use-rate.html).
