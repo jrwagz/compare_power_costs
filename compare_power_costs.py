@@ -193,13 +193,14 @@ def calculate_block_cost(
     https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/001_Residential_Service.pdf
 
     MONTHLY BILL:
+    Prices updated to reflect increases from 25-Apr-2025
     Energy Charge:
         Billing Months - June through September inclusive (4 months)
-            9.0279¢ per kWh first 400 kWh (12.34294488 after fees/taxes)
-            11.7210¢ per kWh all additional kWh (16.0249512 after fees/taxes)
+            9.2814¢ per kWh first 400 kWh (12.68953008 after fees/taxes)
+            11.9745¢ per kWh all additional kWh (16.3715364 after fees/taxes)
         Billing Months - October through May inclusive (8 months)
-            7.9893¢ per kWh first 400 kWh (10.92297096 after fees/taxes)
-            10.3725¢ per kWh all additional kWh (14.181282 after fees/taxes)
+            8.2136¢ per kWh first 400 kWh (11.22963392 after fees/taxes)
+            10.5968¢ per kWh all additional kWh (14.48794496 after fees/taxes)
 
     Prices get adjusted as follows:
         - add 23.84% fees to base price
@@ -216,11 +217,11 @@ def calculate_block_cost(
     """
     month_index = date_object.month
     summer_months = [6, 7, 8, 9]
-    low_rate = 0.1092297096
-    high_rate = 0.14181282
+    low_rate = 0.1122963392
+    high_rate = 0.1448794496
     if month_index in summer_months:
-        low_rate = 0.1234294488
-        high_rate = 0.160249512
+        low_rate = 0.1268953008
+        high_rate = 0.163715364
 
     if usage_sum + usage <= 400:  # Still in the first 400 kWh block
         block_cost = usage * low_rate
@@ -270,10 +271,11 @@ def calculate_ev_cost(
     https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/002E_Residential_Service_Electric_Vehicle_Time_of_Use_Pilot.pdf
 
     MONTHLY BILL: (continued)
+    Prices updated to reflect increases from 25-Apr-2025
     Energy Charge:
     Rate Option 1:
-        25.3532¢ per kWh for all On-Peak kWh (34.66289504 after fees/taxes)
-        5.2004¢ per kWh for all Off-Peak kWh (7.10998688 after fees/taxes)
+        25.9677¢ per kWh for all On-Peak kWh (35.50303944 after fees/taxes)
+        5.3265¢ per kWh for all Off-Peak kWh (7.2823908 after fees/taxes)
 
     Prices get adjusted as follows:
         - add 23.84% fees to base price
@@ -313,9 +315,9 @@ def calculate_ev_cost(
             bool: True if peak hour, else false
     """
     peak_hour = is_peak_hour(date_object=date_object, rmp_holidays=rmp_holidays)
-    hour_rate = 0.0710998688
+    hour_rate = 0.072823908
     if peak_hour:
-        hour_rate = 0.3466289504
+        hour_rate = 0.3550303944
 
     cost = usage * hour_rate
     return cost, peak_hour
