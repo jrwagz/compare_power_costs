@@ -1,6 +1,10 @@
 # Rocky Mountain Power Electric Vehicle Pricing Plan Comparison Tool
 
-> UPDATE: As of 2025-Apr-25 Rocky Mountain Power is no longer accepting new entrants into this program.  Their website
+> UPDATE: As of 2025-08-02 Rocky Mountain Power has stated in
+> [Schedule 2E](https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/002E_Residential_Service_Electric_Vehicle_Time_of_Use_Pilot.pdf)
+> that on 1-Dec-2025 all existing schedule 2E customers will be moved to the Time of Use option as a part of
+> [Schedule 1](https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/001_Residential_Service.pdf).
+> Schedule 2E is no longer accepting new entrants (that became effective on 2025-Apr-25). Their website
 > states to check [their website](https://www.rockymountainpower.net/savings-energy-choices/electric-vehicles.html)
 > after 2025-Dec-01 for updates.
 
@@ -84,5 +88,6 @@ and any additional are another price.  It's fully defined
 > What is "EV pricing"?
 
 This is the Rocky Mountain Power pricing schedule where the price per kWh changes based on the hour
-of the day, and whether or not it's a holiday.  It's fully defined
-[here](https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/002E_Residential_Service_Electric_Vehicle_Time_of_Use_Pilot.pdf)
+of the day, whether or not it's a holiday, and time of year.  It's fully defined as a part of
+[Schedule 1](https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/001_Residential_Service.pdf)
+in the "Time of Use Option" section.
