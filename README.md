@@ -26,16 +26,20 @@ Which should produce an output that looks like this:
 $ ./compare_power_costs.py ./2024-09
 {
     "2024-09": {
+        "block_cost": 151.903,
+        "difference": 7.266,
+        "ev_cost": 144.638,
         "kWh": 1017.812,
-        "block_cost": 108.52534451999998,
-        "ev_cost": 84.54802316799999,
-        "difference": 23.97732135199999
+        "off_peak_%": 86.769,
+        "sum_peak_kWh": 134.671
     },
     "SUMMARY": {
+        "block_cost": 151.903,
+        "difference": 7.266,
+        "ev_cost": 144.638,
         "kWh": 1017.812,
-        "block_cost": 108.52534451999998,
-        "ev_cost": 84.54802316799999,
-        "difference": 23.97732135199999
+        "off_peak_%": 86.769,
+        "sum_peak_kWh": 134.671
     }
 }
 ```
