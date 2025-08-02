@@ -240,6 +240,10 @@ def is_peak_hour(
 ) -> bool:
     """Given a day/hour, determine if it's considered peak or not for time of usage billing
 
+    TODO: Implement this weekend holiday compensation correctly:
+    If the holiday falls on a Saturday) or the Monday following the holiday (if the holiday
+    falls on a Sunday
+
     Args:
         date_object: object representing the day/hour in question
         rmp_holidays: Holiday object defining the RMP holidays
@@ -247,19 +251,48 @@ def is_peak_hour(
     Returns:
         bool: True if peak hour, else false
     """
-    usage_month = date_object.month
     usage_hour = date_object.hour
 
-    summer_months = [5, 6, 7, 8, 9]
-    peak_hours = [8, 9, 15, 16, 17, 18, 19]
-    if usage_month in summer_months:
-        peak_hours = [15, 16, 17, 18, 19]
+    peak_hours = [18, 19, 20, 21]
 
     is_weekday = date_object.weekday() in range(0, 5)
     is_holiday = date_object in rmp_holidays
     peak_day = is_weekday and not is_holiday
     is_peak = peak_day and usage_hour in peak_hours
     return is_peak
+
+def get_tou_rates(date_object: datetime) -> tuple[float, float]:
+    """Given a day/hour, return the peak, and off-peak time of usage rates for that day
+
+    Energy Charge:
+    Billing Months - June through September inclusive
+        31.9683¢ per kWh for all On-Peak kWh
+        7.1041¢ per kWh for all Off-Peak kWh
+
+    Billing Months - October through May inclusive
+        28.2905¢ per kWh for all On-Peak kWh
+        6.2868¢ per kWh for all Off-Peak kWh
+
+    Prices get adjusted as follows:
+        - add 23.84% fees to base price
+        - after fees are added, add another 10.4% for taxes
+        - effective total increase is 36.72%
+
+    Args:
+        date_object: object representing the day/hour in question
+
+    Returns:
+        tuple[float, float]: peak rate for the given day, and off-peak rate for the given day
+    """
+    usage_month = date_object.month
+    summer_months = [6, 7, 8, 9]
+    tax_fee_rate = 1.3672
+    peak_rate = 0.282905 * tax_fee_rate # 0.386787716
+    off_peak_rate = 0.062868 * tax_fee_rate # 0.0859531296
+    if usage_month in summer_months:
+        peak_rate = 0.319683 * tax_fee_rate # 0.4370705976
+        off_peak_rate = 0.071041 * tax_fee_rate # 0.0971272552
+    return peak_rate, off_peak_rate
 
 
 def calculate_ev_cost(
@@ -268,14 +301,16 @@ def calculate_ev_cost(
     """Calculate the day's EV cost
 
     Definition taken from:
-    https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/002E_Residential_Service_Electric_Vehicle_Time_of_Use_Pilot.pdf
+    https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/001_Residential_Service.pdf
 
-    MONTHLY BILL: (continued)
-    Prices updated to reflect increases from 25-Apr-2025
-    Energy Charge:
-    Rate Option 1:
-        25.9677¢ per kWh for all On-Peak kWh (35.50303944 after fees/taxes)
-        5.3265¢ per kWh for all Off-Peak kWh (7.2823908 after fees/taxes)
+   Energy Charge:
+    Billing Months - June through September inclusive
+        31.9683¢ per kWh for all On-Peak kWh
+        7.1041¢ per kWh for all Off-Peak kWh
+
+    Billing Months - October through May inclusive
+        28.2905¢ per kWh for all On-Peak kWh
+        6.2868¢ per kWh for all Off-Peak kWh
 
     Prices get adjusted as follows:
         - add 23.84% fees to base price
@@ -283,12 +318,7 @@ def calculate_ev_cost(
         - effective total increase is 36.72%
 
     TIME PERIODS:
-        On-Peak:
-            October through April inclusive (7 months)
-                8:00 a.m. to 10:00 a.m., and 3:00 p.m. to 8:00 p.m., Monday thru Friday, except
-                holidays.
-            May through September inclusive (5 months)
-                3:00 p.m. to 8:00 p.m., Monday thru Friday, except holidays.
+        On-Peak: 6:00 p.m. to 10:00 p.m. Monday thru Friday, except holidays.
         Off-Peak: All other times.
 
     Holidays include only
@@ -315,9 +345,10 @@ def calculate_ev_cost(
             bool: True if peak hour, else false
     """
     peak_hour = is_peak_hour(date_object=date_object, rmp_holidays=rmp_holidays)
-    hour_rate = 0.072823908
+    peak_rate, off_peak_rate = get_tou_rates(date_object=date_object)
+    hour_rate = off_peak_rate
     if peak_hour:
-        hour_rate = 0.3550303944
+        hour_rate = peak_rate
 
     cost = usage * hour_rate
     return cost, peak_hour
