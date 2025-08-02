@@ -45,9 +45,9 @@ $ ./compare_power_costs.py ./2024-09
 ```
 
 This example output is saying that for the example data, the base price (before taxes, surcharges,
-and fees) of electricity would be $108.53 on the "standard" block based pricing schedule, and would
-be $84.55 on the EV time of day based pricing schedule.  Furthermore it shows that the difference is
-$23.97 in favor of the EV time of day pricing schedule.
+and fees) of electricity would be $151.90 on the "standard" block based pricing schedule, and would
+be $144.64 on the EV time of day based pricing schedule.  Furthermore it shows that the difference is
+$7.27 in favor of the EV time of day pricing schedule.
 
 The repo provides some sample data for clarity purposes, however in order to get an answer as to
 whether or not it's worth switching for yourself, you'll need to get your own data and provide it to
