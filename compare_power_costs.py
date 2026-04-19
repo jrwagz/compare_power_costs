@@ -52,6 +52,18 @@ class RateSchedule:
 # Newest-first. When RMP publishes a new schedule, prepend a new entry.
 RATE_SCHEDULES: list[RateSchedule] = [
     RateSchedule(
+        effective_date=date(2025, 12, 1),
+        tax_fee_multiplier=1.3672,
+        block_summer_low=0.093199,
+        block_summer_high=0.120130,
+        block_winter_low=0.082477,
+        block_winter_high=0.106309,
+        tou_summer_peak=0.320834,
+        tou_summer_off_peak=0.071296,
+        tou_winter_peak=0.283924,
+        tou_winter_off_peak=0.063094,
+    ),
+    RateSchedule(
         effective_date=date(2025, 4, 25),
         tax_fee_multiplier=1.3672,
         block_summer_low=0.092814,
@@ -258,14 +270,14 @@ def calculate_block_cost(
     https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/001_Residential_Service.pdf
 
     MONTHLY BILL:
-    Prices updated to reflect increases from 25-Apr-2025
+    Prices updated to reflect increases from 01-Dec-2025
     Energy Charge:
         Billing Months - June through September inclusive (4 months)
-            9.2814¢ per kWh first 400 kWh (12.68953008 after fees/taxes)
-            11.9745¢ per kWh all additional kWh (16.3715364 after fees/taxes)
+            9.3199¢ per kWh first 400 kWh (12.74216728 after fees/taxes)
+            12.0130¢ per kWh all additional kWh (16.42417360 after fees/taxes)
         Billing Months - October through May inclusive (8 months)
-            8.2136¢ per kWh first 400 kWh (11.22963392 after fees/taxes)
-            10.5968¢ per kWh all additional kWh (14.48794496 after fees/taxes)
+            8.2477¢ per kWh first 400 kWh (11.27625544 after fees/taxes)
+            10.6309¢ per kWh all additional kWh (14.53455048 after fees/taxes)
 
     Prices get adjusted as follows:
         - add 23.84% fees to base price
@@ -328,12 +340,12 @@ def get_tou_rates(date_object: datetime) -> tuple[float, float]:
 
     Energy Charge:
     Billing Months - June through September inclusive
-        31.9683¢ per kWh for all On-Peak kWh
-        7.1041¢ per kWh for all Off-Peak kWh
+        32.0834¢ per kWh for all On-Peak kWh
+        7.1296¢ per kWh for all Off-Peak kWh
 
     Billing Months - October through May inclusive
-        28.2905¢ per kWh for all On-Peak kWh
-        6.2868¢ per kWh for all Off-Peak kWh
+        28.3924¢ per kWh for all On-Peak kWh
+        6.3094¢ per kWh for all Off-Peak kWh
 
     Prices get adjusted as follows:
         - add 23.84% fees to base price
@@ -366,12 +378,12 @@ def calculate_ev_cost(
 
     Energy Charge:
      Billing Months - June through September inclusive
-         31.9683¢ per kWh for all On-Peak kWh
-         7.1041¢ per kWh for all Off-Peak kWh
+         32.0834¢ per kWh for all On-Peak kWh
+         7.1296¢ per kWh for all Off-Peak kWh
 
      Billing Months - October through May inclusive
-         28.2905¢ per kWh for all On-Peak kWh
-         6.2868¢ per kWh for all Off-Peak kWh
+         28.3924¢ per kWh for all On-Peak kWh
+         6.3094¢ per kWh for all Off-Peak kWh
 
      Prices get adjusted as follows:
          - add 23.84% fees to base price

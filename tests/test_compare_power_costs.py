@@ -123,11 +123,21 @@ def test_summer_months_use_summer_rates(month):
     assert peak == pytest.approx(0.4370705976, rel=1e-9)
 
 
-@pytest.mark.parametrize("month", [1, 2, 3, 4, 5, 10, 11, 12])
+@pytest.mark.parametrize("month", [1, 2, 3, 4, 5, 10, 11])
 def test_winter_months_use_winter_rates(month):
-    """All non-summer months use the winter peak rate."""
+    """All non-summer months use the winter peak rate.
+
+    December 2025 is excluded because it falls under the Dec 1, 2025 schedule
+    update; that case is covered by ``test_december_2025_uses_new_winter_rate``.
+    """
     peak, _ = get_tou_rates(datetime(2025, month, 15, 12, 0))
     assert peak == pytest.approx(0.386787716, rel=1e-9)
+
+
+def test_december_2025_uses_new_winter_rate():
+    """December 2025 falls under the Dec 1, 2025 schedule with the new winter peak rate."""
+    peak, _ = get_tou_rates(datetime(2025, 12, 15, 12, 0))
+    assert peak == pytest.approx(0.283924 * 1.3672, rel=1e-9)
 
 
 # ---------------------------------------------------------------------------
