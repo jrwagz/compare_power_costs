@@ -21,5 +21,9 @@ format:
 	black .
 	isort .
 
+.PHONY: test
+test:
+	pytest tests/
+
 .PHONY: ready
-ready: format lint
+ready: format lint test
