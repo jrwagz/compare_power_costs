@@ -56,15 +56,11 @@ def find_next_peak_change(
         timedelta: time until next change in peak status
     """
     initial_peak = is_peak_hour(date_object=date_object, rmp_holidays=rmp_holidays)
-    # Ensure start_datetime is at the start of the hour
-    if (
-        date_object.minute != 0
-        or date_object.second != 0
-        or date_object.microsecond != 0
-    ):
-        iter_datetime = date_object.replace(
-            minute=0, second=0, microsecond=0
-        ) + timedelta(hours=1)
+    # Start at the next hour boundary. If already exactly on an hour, advance one hour
+    # to skip re-testing the current hour (which is always same as initial_peak).
+    iter_datetime = date_object.replace(minute=0, second=0, microsecond=0) + timedelta(
+        hours=1
+    )
 
     while (
         is_peak_hour(date_object=iter_datetime, rmp_holidays=rmp_holidays)

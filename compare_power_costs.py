@@ -14,13 +14,78 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 from holidays.countries import US
 
 logger = logging.getLogger(__name__)
+
+SUMMER_MONTHS = frozenset({6, 7, 8, 9})
+PEAK_HOURS = frozenset({18, 19, 20, 21})
+
+
+@dataclass(frozen=True)
+class RateSchedule:
+    """Rocky Mountain Power rates in effect from ``effective_date`` onward.
+
+    All rate fields are base rates in USD/kWh (before fees and taxes).
+    The billed rate is ``base_rate * tax_fee_multiplier``.
+    """
+
+    effective_date: date
+    tax_fee_multiplier: float
+    # Schedule 1 block rates
+    block_summer_low: float
+    block_summer_high: float
+    block_winter_low: float
+    block_winter_high: float
+    # Time-of-Use rates
+    tou_summer_peak: float
+    tou_summer_off_peak: float
+    tou_winter_peak: float
+    tou_winter_off_peak: float
+
+
+# Newest-first. When RMP publishes a new schedule, prepend a new entry.
+RATE_SCHEDULES: list[RateSchedule] = [
+    RateSchedule(
+        effective_date=date(2025, 4, 25),
+        tax_fee_multiplier=1.3672,
+        block_summer_low=0.092814,
+        block_summer_high=0.119745,
+        block_winter_low=0.082136,
+        block_winter_high=0.105968,
+        tou_summer_peak=0.319683,
+        tou_summer_off_peak=0.071041,
+        tou_winter_peak=0.282905,
+        tou_winter_off_peak=0.062868,
+    ),
+]
+
+
+def get_rate_schedule(usage_date: date) -> RateSchedule:
+    """Return the rate schedule to apply for ``usage_date``.
+
+    Picks the most recent schedule whose ``effective_date`` is on or before ``usage_date``.
+    If ``usage_date`` predates every known schedule, falls back to the earliest — this lets
+    historical usage data be scored against current rates ("what would this have cost today?").
+
+    Args:
+        usage_date: the billing date to look up
+
+    Returns:
+        a ``RateSchedule``
+    """
+    schedules_newest_first = sorted(
+        RATE_SCHEDULES, key=lambda s: s.effective_date, reverse=True
+    )
+    for schedule in schedules_newest_first:
+        if usage_date >= schedule.effective_date:
+            return schedule
+    return schedules_newest_first[-1]
 
 
 class RockyMountainPowerHolidays(US):
@@ -215,13 +280,13 @@ def calculate_block_cost(
     Returns:
         float: cost in USD
     """
-    month_index = date_object.month
-    summer_months = [6, 7, 8, 9]
-    low_rate = 0.1122963392
-    high_rate = 0.1448794496
-    if month_index in summer_months:
-        low_rate = 0.1268953008
-        high_rate = 0.163715364
+    schedule = get_rate_schedule(date_object.date())
+    if date_object.month in SUMMER_MONTHS:
+        low_rate = schedule.block_summer_low * schedule.tax_fee_multiplier
+        high_rate = schedule.block_summer_high * schedule.tax_fee_multiplier
+    else:
+        low_rate = schedule.block_winter_low * schedule.tax_fee_multiplier
+        high_rate = schedule.block_winter_high * schedule.tax_fee_multiplier
 
     if usage_sum + usage <= 400:  # Still in the first 400 kWh block
         block_cost = usage * low_rate
@@ -251,15 +316,12 @@ def is_peak_hour(
     Returns:
         bool: True if peak hour, else false
     """
-    usage_hour = date_object.hour
-
-    peak_hours = [18, 19, 20, 21]
-
-    is_weekday = date_object.weekday() in range(0, 5)
+    is_weekday = date_object.weekday() < 5
     is_holiday = date_object in rmp_holidays
     peak_day = is_weekday and not is_holiday
-    is_peak = peak_day and usage_hour in peak_hours
+    is_peak = peak_day and date_object.hour in PEAK_HOURS
     return is_peak
+
 
 def get_tou_rates(date_object: datetime) -> tuple[float, float]:
     """Given a day/hour, return the peak, and off-peak time of usage rates for that day
@@ -284,14 +346,13 @@ def get_tou_rates(date_object: datetime) -> tuple[float, float]:
     Returns:
         tuple[float, float]: peak rate for the given day, and off-peak rate for the given day
     """
-    usage_month = date_object.month
-    summer_months = [6, 7, 8, 9]
-    tax_fee_rate = 1.3672
-    peak_rate = 0.282905 * tax_fee_rate # 0.386787716
-    off_peak_rate = 0.062868 * tax_fee_rate # 0.0859531296
-    if usage_month in summer_months:
-        peak_rate = 0.319683 * tax_fee_rate # 0.4370705976
-        off_peak_rate = 0.071041 * tax_fee_rate # 0.0971272552
+    schedule = get_rate_schedule(date_object.date())
+    if date_object.month in SUMMER_MONTHS:
+        peak_rate = schedule.tou_summer_peak * schedule.tax_fee_multiplier
+        off_peak_rate = schedule.tou_summer_off_peak * schedule.tax_fee_multiplier
+    else:
+        peak_rate = schedule.tou_winter_peak * schedule.tax_fee_multiplier
+        off_peak_rate = schedule.tou_winter_off_peak * schedule.tax_fee_multiplier
     return peak_rate, off_peak_rate
 
 
@@ -300,49 +361,49 @@ def calculate_ev_cost(
 ) -> tuple[float, bool]:
     """Calculate the day's EV cost
 
-    Definition taken from:
-    https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/001_Residential_Service.pdf
+     Definition taken from:
+     https://www.rockymountainpower.net/content/dam/pcorp/documents/en/rockymountainpower/rates-regulation/utah/rates/001_Residential_Service.pdf
 
-   Energy Charge:
-    Billing Months - June through September inclusive
-        31.9683¢ per kWh for all On-Peak kWh
-        7.1041¢ per kWh for all Off-Peak kWh
+    Energy Charge:
+     Billing Months - June through September inclusive
+         31.9683¢ per kWh for all On-Peak kWh
+         7.1041¢ per kWh for all Off-Peak kWh
 
-    Billing Months - October through May inclusive
-        28.2905¢ per kWh for all On-Peak kWh
-        6.2868¢ per kWh for all Off-Peak kWh
+     Billing Months - October through May inclusive
+         28.2905¢ per kWh for all On-Peak kWh
+         6.2868¢ per kWh for all Off-Peak kWh
 
-    Prices get adjusted as follows:
-        - add 23.84% fees to base price
-        - after fees are added, add another 10.4% for taxes
-        - effective total increase is 36.72%
+     Prices get adjusted as follows:
+         - add 23.84% fees to base price
+         - after fees are added, add another 10.4% for taxes
+         - effective total increase is 36.72%
 
-    TIME PERIODS:
-        On-Peak: 6:00 p.m. to 10:00 p.m. Monday thru Friday, except holidays.
-        Off-Peak: All other times.
+     TIME PERIODS:
+         On-Peak: 6:00 p.m. to 10:00 p.m. Monday thru Friday, except holidays.
+         Off-Peak: All other times.
 
-    Holidays include only
-        - New Year's Day
-        - President's Day
-        - Memorial Day
-        - Independence Day
-        - Pioneer Day
-        - Labor Day
-        - Thanksgiving Day
-        - Christmas Day.
-    When a holiday falls on a Saturday or Sunday, the Friday before the holiday (if the holiday
-    falls on a Saturday) or the Monday following the holiday (if the holiday falls on a Sunday)
-    will be considered a holiday and consequently Off-Peak.
+     Holidays include only
+         - New Year's Day
+         - President's Day
+         - Memorial Day
+         - Independence Day
+         - Pioneer Day
+         - Labor Day
+         - Thanksgiving Day
+         - Christmas Day.
+     When a holiday falls on a Saturday or Sunday, the Friday before the holiday (if the holiday
+     falls on a Saturday) or the Monday following the holiday (if the holiday falls on a Sunday)
+     will be considered a holiday and consequently Off-Peak.
 
-    Args:
-        date_object: object representing the day/hour in question
-        usage: usage
-        rmp_holidays: Holiday object defining the RMP holidays
+     Args:
+         date_object: object representing the day/hour in question
+         usage: usage
+         rmp_holidays: Holiday object defining the RMP holidays
 
-    Returns:
-        Tuple containing:
-            float: usage cost in USD
-            bool: True if peak hour, else false
+     Returns:
+         Tuple containing:
+             float: usage cost in USD
+             bool: True if peak hour, else false
     """
     peak_hour = is_peak_hour(date_object=date_object, rmp_holidays=rmp_holidays)
     peak_rate, off_peak_rate = get_tou_rates(date_object=date_object)
