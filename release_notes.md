@@ -12,6 +12,29 @@ No behavior change on existing sample data — output of `./compare_power_costs.
 
 ---
 
+## 4. Add Dec 1, 2025 RMP rate schedule
+
+Rocky Mountain Power's Schedule 1 was updated effective 2025-12-01 (Docket No. 25-035-T12). Prepended a new `RateSchedule` entry with the new base rates, verified against the official PDF and an April 2026 customer bill:
+
+| Rate              | Apr 25, 2025 | Dec 1, 2025  |
+|-------------------|--------------|--------------|
+| Block summer low  | 0.092814     | **0.093199** |
+| Block summer high | 0.119745     | **0.120130** |
+| Block winter low  | 0.082136     | **0.082477** |
+| Block winter high | 0.105968     | **0.106309** |
+| TOU summer peak   | 0.319683     | **0.320834** |
+| TOU summer off    | 0.071041     | **0.071296** |
+| TOU winter peak   | 0.282905     | **0.283924** |
+| TOU winter off    | 0.062868     | **0.063094** |
+
+The `tax_fee_multiplier` (1.3672) is carried over unchanged. Note: real bills now break fees into separate line items (Energy Balancing Account at 22.14% is the largest), so the flat multiplier under-estimates the true bill by ~3%. Modeling individual fee components is left for a follow-up.
+
+Docstrings in `calculate_block_cost`, `get_tou_rates`, and `calculate_ev_cost` updated to reference the Dec 1, 2025 rates.
+
+The winter-month parametrized test in `tests/test_compare_power_costs.py` was split: months 1-5, 10, 11 of 2025 still assert the old rate; a new `test_december_2025_uses_new_winter_rate` covers Dec 2025 under the updated schedule.
+
+---
+
 ## 1. Fix `UnboundLocalError` in `find_next_peak_change`
 
 ### Problem
