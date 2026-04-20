@@ -474,9 +474,7 @@ def _fixed_date_holiday_cases(years: range) -> list:
     for year in years:
         for month, day, name in FIXED_DATE_RMP_HOLIDAYS:
             slug = _HOLIDAY_SLUG_RE.sub("-", name.lower()).strip("-")
-            cases.append(
-                pytest.param(year, month, day, name, id=f"{year}-{slug}")
-            )
+            cases.append(pytest.param(year, month, day, name, id=f"{year}-{slug}"))
     return cases
 
 
